@@ -1,0 +1,152 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+#define MAX_SIZE 1000
+
+// Max Heap for lower half (stores doubles)
+typedef struct {
+    double data[MAX_SIZE];
+    int size;
+} MaxHeap;
+
+// Min Heap for upper half (stores doubles)
+typedef struct {
+    double data[MAX_SIZE];
+    int size;
+} MinHeap;
+
+// Median Finder struct
+typedef struct {
+    MaxHeap low;
+    MinHeap high;
+} MedianFinder;
+
+// Swap utility for doubles
+void swap(double *a, double *b) {
+    double tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+// Max Heap operations (double)
+void maxHeapInsert(MaxHeap *h, double val) {
+    int i = h->size++;
+    h->data[i] = val;
+    while (i > 0 && h->data[i] > h->data[(i - 1) / 2]) {
+        swap(&h->data[i], &h->data[(i - 1) / 2]);
+        i = (i - 1) / 2;
+    }
+}
+
+double maxHeapExtract(MaxHeap *h) {
+    double top = h->data[0];
+    h->data[0] = h->data[--h->size];
+    int i = 0, largest, left, right;
+    while (1) {
+        largest = i;
+        left = 2 * i + 1;
+        right = 2 * i + 2;
+        if (left < h->size && h->data[left] > h->data[largest])
+            largest = left;
+        if (right < h->size && h->data[right] > h->data[largest])
+            largest = right;
+        if (largest == i) break;
+        swap(&h->data[i], &h->data[largest]);
+        i = largest;
+    }
+    return top;
+}
+
+double maxHeapTop(MaxHeap *h) {
+    return h->data[0];
+}
+
+// Min Heap operations (double)
+void minHeapInsert(MinHeap *h, double val) {
+    int i = h->size++;
+    h->data[i] = val;
+    while (i > 0 && h->data[i] < h->data[(i - 1) / 2]) {
+        swap(&h->data[i], &h->data[(i - 1) / 2]);
+        i = (i - 1) / 2;
+    }
+}
+
+double minHeapExtract(MinHeap *h) {
+    double top = h->data[0];
+    h->data[0] = h->data[--h->size];
+    int i = 0, smallest, left, right;
+    while (1) {
+        smallest = i;
+        left = 2 * i + 1;
+        right = 2 * i + 2;
+        if (left < h->size && h->data[left] < h->data[smallest])
+            smallest = left;
+        if (right < h->size && h->data[right] < h->data[smallest])
+            smallest = right;
+        if (smallest == i) break;
+        swap(&h->data[i], &h->data[smallest]);
+        i = smallest;
+    }
+    return top;
+}
+
+double minHeapTop(MinHeap *h) {
+    return h->data[0];
+}
+
+// Add number and balance heaps
+void addNum(MedianFinder *mf, double num) {
+    if (mf->low.size == 0 || num <= maxHeapTop(&mf->low))
+        maxHeapInsert(&mf->low, num);
+    else
+        minHeapInsert(&mf->high, num);
+
+    // Balance heaps sizes
+    if (mf->low.size > mf->high.size + 1)
+        minHeapInsert(&mf->high, maxHeapExtract(&mf->low));
+    else if (mf->high.size > mf->low.size)
+        maxHeapInsert(&mf->low, minHeapExtract(&mf->high));
+}
+
+// Find median
+double findMedian(MedianFinder *mf) {
+    if (mf->low.size > mf->high.size)
+        return maxHeapTop(&mf->low);
+    else
+        return (maxHeapTop(&mf->low) + minHeapTop(&mf->high)) / 2.0;
+}
+
+int main() {
+    MedianFinder mf = {{.size = 0}, {.size = 0}};
+    char input[50];
+
+    printf("Enter numbers to find the median (enter 'q' to quit):\n");
+
+    while (1) {
+        printf("Enter a number: ");
+        if (!fgets(input, sizeof(input), stdin)) {
+            // Input error or EOF
+            break;
+        }
+
+        // Check if user wants to quit
+        if (input[0] == 'q' || input[0] == 'Q')
+            break;
+
+        char *endptr;
+        double num = strtod(input, &endptr);
+
+        // Check input validity (must have consumed something and endptr points to newline or string end)
+        if (endptr == input || (*endptr != '\n' && *endptr != '\0')) {
+            printf("Invalid input. Please enter a valid number or 'q' to quit.\n");
+            continue;
+        }
+
+        addNum(&mf, num);
+        printf("Current Median: %.3f\n", findMedian(&mf));
+    }
+
+    printf("Data stream ended.\n");
+    return 0;
+}
